@@ -27,12 +27,20 @@ export default function LoadingScreen({ onComplete }: { onComplete: () => void }
       else setTimeout(() => onCompleteRef.current(), 400)
     }
     raf = requestAnimationFrame(tick)
-    const wordTimer = setInterval(() => setWordIndex((i) => i + 1), 800)
+    const wordTimer = setInterval(() => {
+      setWordIndex((i) => {
+        if (i >= words.length - 1) {
+          clearInterval(wordTimer)
+          return i
+        }
+        return i + 1
+      })
+    }, 800)
     return () => {
       cancelAnimationFrame(raf)
       clearInterval(wordTimer)
     }
-  }, [reduced])
+  }, [reduced, words.length])
 
   if (reduced) return null
 
