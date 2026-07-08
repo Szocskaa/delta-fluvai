@@ -98,6 +98,10 @@ export default function Hero({ started }: { started: boolean }) {
     let rafId = 0
     let idleTimer: ReturnType<typeof setTimeout> | undefined
     const t0 = performance.now()
+    // internal playback clock — video.currentTime stair-steps at the media
+    // framerate, which makes anything derived from it visibly vibrate
+    let clock = video.currentTime
+    let lastNow = t0
 
     const maxRadius = () =>
       Math.min(360, Math.max(180, Math.min(section.clientWidth, section.clientHeight) * 0.285))
@@ -111,6 +115,8 @@ export default function Hero({ started }: { started: boolean }) {
 
     const frame = (now: number) => {
       rafId = requestAnimationFrame(frame)
+      const dt = Math.min(0.1, (now - lastNow) / 1000)
+      lastNow = now
       if (!visible) return
 
       if (drifting) {
@@ -127,10 +133,17 @@ export default function Hero({ started }: { started: boolean }) {
       radius += (targetRadius - radius) * RADIUS_EASE
 
       // Morph progress from the boomerang clip: 0 = river delta, 1 = brain.
+      // Advance our own clock by wall time and only *softly* correct toward
+      // video.currentTime, so the derived zoom is perfectly continuous.
       const duration = video.duration || 14
+      if (!video.paused && !video.ended) clock += dt
+      const drift = video.currentTime - clock
+      if (Math.abs(drift) > 0.25) clock = video.currentTime // seek or loop wrap
+      else clock += drift * 0.04
+      if (clock > duration) clock -= duration
+      if (clock < 0) clock = 0
       const half = duration / 2
-      const t = video.currentTime
-      const progress = t <= half ? t / half : (duration - t) / half
+      const progress = clock <= half ? clock / half : (duration - clock) / half
 
       const style = section.style
       style.setProperty('--mx', pos.x.toFixed(1))
@@ -194,33 +207,50 @@ export default function Hero({ started }: { started: boolean }) {
       className="relative h-svh min-h-[640px] overflow-hidden"
       aria-label="Delta FluvAI — where data becomes intelligence"
     >
-      {/* Base: static river delta */}
-      <img
-        src="/hero-delta.jpg"
-        alt=""
-        className="hero-media hero-base-layer"
-        fetchPriority="high"
-        draggable={false}
-      />
-
       {reducedMotion ? (
-        <img src="/hero-brain.jpg" alt="" className="hero-media hero-static-reveal" draggable={false} />
-      ) : (
-        /* Morph video, revealed in the cursor-following feathered circle.
-           The mask sits on the wrapper; the video counter-zooms inside it. */
-        <div className="hero-video-layer" aria-hidden="true">
-          <video
-            ref={videoRef}
-            src="/hero-reveal.mp4"
-            poster="/hero-poster.jpg"
-            className="hero-media hero-video-inner"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
+        <>
+          <img
+            src="/hero-delta.jpg"
+            alt=""
+            className="hero-media"
+            fetchPriority="high"
+            draggable={false}
           />
-        </div>
+          <img
+            src="/hero-brain.jpg"
+            alt=""
+            className="hero-media hero-static-reveal"
+            draggable={false}
+          />
+        </>
+      ) : (
+        <>
+          {/* Morph video — runs fully visible underneath everything */}
+          <div className="hero-video-layer" aria-hidden="true">
+            <video
+              ref={videoRef}
+              src="/hero-reveal.mp4"
+              poster="/hero-poster.jpg"
+              className="hero-media hero-video-inner"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+            />
+          </div>
+          {/* Cover still at partial opacity — the morph shimmers through
+              everywhere, and the cursor circle cuts a feathered hole in it */}
+          <div className="hero-base-layer">
+            <img
+              src="/hero-delta.jpg"
+              alt=""
+              className="hero-media hero-base-inner"
+              fetchPriority="high"
+              draggable={false}
+            />
+          </div>
+        </>
       )}
 
       {/* Scrims for text legibility over both light water and dark CGI tones */}
