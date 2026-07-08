@@ -15,6 +15,22 @@ export function usePrefersReducedMotion(): boolean {
   return reduced
 }
 
+/** True on devices whose primary input has no real `:hover` (touchscreens). */
+export function useIsTouchDevice(): boolean {
+  const [isTouch, setIsTouch] = useState(
+    () => window.matchMedia('(hover: none) and (pointer: coarse)').matches,
+  )
+
+  useEffect(() => {
+    const mq = window.matchMedia('(hover: none) and (pointer: coarse)')
+    const onChange = () => setIsTouch(mq.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
+  return isTouch
+}
+
 /** Adds the `in-view` class once the element scrolls into the viewport. */
 export function useReveal<T extends HTMLElement>() {
   const ref = useRef<T>(null)
