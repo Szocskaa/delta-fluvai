@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
@@ -19,6 +19,7 @@ export default function Work() {
   const s = useStrings().work
   const reduced = usePrefersReducedMotion()
   const gridRef = useRef<HTMLDivElement>(null)
+  const [activeIndex, setActiveIndex] = useState<number | null>(null)
 
   // gentle parallax on the card artwork while scrolling
   useEffect(() => {
@@ -55,6 +56,7 @@ export default function Work() {
         <div ref={gridRef} className="mt-14 grid grid-cols-1 gap-5 md:grid-cols-12 md:gap-6">
           {s.cases.map((c, i) => {
             const layout = CARD_LAYOUT[i]
+            const isActive = activeIndex === i
             return (
               <motion.div
                 key={c.title}
@@ -62,7 +64,16 @@ export default function Work() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: (i % 2) * 0.1, ease: [0.25, 0.1, 0.25, 1] }}
                 viewport={{ once: true, margin: '-80px' }}
-                className={`group relative overflow-hidden rounded-3xl border border-stroke bg-surface ${layout.span} ${layout.aspect}`}
+                onClick={() => setActiveIndex((prev) => (prev === i ? null : i))}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    setActiveIndex((prev) => (prev === i ? null : i))
+                  }
+                }}
+                className={`group relative cursor-pointer overflow-hidden rounded-3xl border border-stroke bg-surface ${layout.span} ${layout.aspect}`}
               >
                 {/* parallax wrapper — gsap owns its transform; the img keeps its own hover scale */}
                 <div data-parallax className="absolute inset-0">
@@ -71,6 +82,7 @@ export default function Work() {
                     alt={c.title}
                     loading="lazy"
                     className="h-full w-full scale-110 object-cover transition-transform duration-700 group-hover:scale-[1.16]"
+                    style={isActive ? { transform: 'scale(1.16)' } : undefined}
                   />
                 </div>
                 {/* halftone texture */}
@@ -82,8 +94,11 @@ export default function Work() {
                     {c.title}
                   </h3>
                 </div>
-                {/* hover overlay with the outcome metric */}
-                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 bg-bg/70 opacity-0 backdrop-blur-lg transition-opacity duration-500 group-hover:opacity-100">
+                {/* hover overlay with the outcome metric — also toggled by tap/keyboard for touch devices */}
+                <div
+                  className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 bg-bg/70 opacity-0 backdrop-blur-lg transition-opacity duration-500 group-hover:opacity-100"
+                  style={isActive ? { opacity: 1 } : undefined}
+                >
                   <p className="font-display text-4xl italic text-text-primary md:text-5xl">
                     {c.metric}
                   </p>
